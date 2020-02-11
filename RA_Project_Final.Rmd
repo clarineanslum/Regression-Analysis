@@ -1,0 +1,508 @@
+---
+title: "FINAL"
+author: "Shamini Puthooppallil Baby and Clarine Anslum"
+date: "06/06/2019"
+output: word_document
+---
+
+#ABSTRACT
+
+The aim of this project was to examinie the product purcahse on Black Friday sales influenced by factors such as Gender, Age, Occupation, City of residence, Product_Category and etc.
+
+To facilitate the problem statement, the data was sourced from https://www.kaggle.com/mehdidag/black-friday  and started analysing the factors by fitteing multiple linear regression model. 
+
+The regressors that were strongly related to purchase amount were manipulated and the evidence for the same have been proved.
+
+#INTRODUCTION
+
+Consumers simply being tired of the too-good-to-be-true deals means that you may not get enough of sales on Black Friday to gain a positive return on investment. With November being the new December and Black Friday deals starting earlier and earlier each year, consumers are simply fatigued by deals. Here, the store wants to know better the customer purchase behaviour against different products.
+
+
+#Methodology 
+The regression problem is trying to predict the response variable (the amount of purchase)is Purchase amount in dollars and the predictor variables will be verified using statistical tools and the  programming language R. Also, we were interested in determining the multicollinearity among the independent variables and how they affect the dependent variable during the regression analysis. 
+
+
+##Transaction Data 
+
+The data was sourced from the open source plaform Kaggle (https://www.kaggle.com/) with  all rights reserved for public access and the link for the data is https://www.kaggle.com/mehdidag/black-friday.
+
+The dataset here is a sample of the transactions made in a retail store with 550 000 observations about the black Friday in a retail store, it contains different kinds of variables either numerical or categorical. This dataset contains missing values and need to be cleansed before the analysis.
+
+The variables are :
+User_ID, Product_ID, Gender, Age, Occupation ID, City_Category, Stay_In_Current_City_Years, Marital_Status, Product_Category_1, Product_Category_2, Product_Category_3, Purchase, Purchase amount in dollars
+
+##Hypothesis
+
+Ho : Purchase amount on Black Friday sale is not influenced by the customers' characteristics 
+H1 : Purchase amount on Black Friday is strongly influenced by customers' characteristics
+
+##Data preparation
+
+Before starting the data analysis and modelling, the main duty of the data scientist is to make sure that the data provided is in correct format. If the dataset is not in proper format, the entire work needs to be repeated.
+The required libraries for the time series analysis is in  Appendix 2.
+Dataset is loaded to the R software using read.csv function and performed required pre-validations for the loaded dataset. The Regression analysis is performed using the R Markdown and the common statistical tools in the upcoming sessions.
+Structure of the dataset, column values, null values and impossible values are checked using some basic R data preprocessing packages. We have replaced the null values and the impossible values with appropriate values.Sample data is viewed and make sure that the data loaded correctly to the R software. This code snippet is available in Appendix 3
+
+
+```{r message=FALSE}
+#loading the libraries 
+library(readr)
+library(tidyverse)
+library(ggcorrplot)
+library(car)
+library(olsrr)
+library(lmtest)
+library(FitAR)
+library(corrgram)
+library(psych)
+library(dplyr)
+```
+
+
+```{r}
+#Load the datset into R environment
+BFData <- read.csv("C:/WorkingFolder/2ndyear/Regression Analysis/Project/BlackFriday.csv")
+```
+
+```{r}
+#check the structure of the data
+str(BFData)
+ 
+```
+
+```{r}
+#check the sample
+head(BFData)
+```
+
+```{r}
+#REPLACE NA to 0
+BFData[is.na(BFData)] <- 0
+
+```
+
+
+```{r}
+
+describe(BFData)
+```
+
+
+```{r}
+#Split the dayaset into train and test for regression analysis
+set.seed(10)
+split = sample(1:nrow(BFData), 0.7 * nrow(BFData))
+train_BF = BFData[split,]
+test_BF = BFData[-split,]
+#print train data count
+print("Number of rows in train data")
+nrow(train_BF)
+#print test data count 
+print("Number of rows in test data")
+nrow(test_BF)
+print("Number of rows in Raw datset ")
+nrow(BFData)
+```
+
+```{r}
+#display the correllation 
+View(round(cor(Filter(is.numeric, BFData)),2))
+```
+
+```{r}
+#BFData$Stay_In_Current_City_Years[BFData$Stay_In_Current_City_Years =="4+"] <- "4"
+```
+
+```{r}
+BFData$Stay_In_Current_City_Years
+```
+
+
+```{r}
+#subset the train data and select the relevant variables 
+train_BF_NUMERIC<- train_BF %>% 
+    select(Gender, Age, Occupation, Marital_Status, City_Category, Stay_In_Current_City_Years, Purchase)
+train_BF_NUMERIC$Gender <- as.integer(train_BF_NUMERIC$Gender)
+train_BF_NUMERIC$Age <- as.integer(train_BF_NUMERIC$Age)
+train_BF_NUMERIC$City_Category <- as.integer(train_BF_NUMERIC$City_Category)
+train_BF_NUMERIC$Stay_In_Current_City_Years <- as.integer(train_BF_NUMERIC$Stay_In_Current_City_Years)
+
+#check the structure of train dataset 
+str(train_BF_NUMERIC)
+
+```
+
+```{r}
+#subset the test data and select the relevant variables
+test_BF_Numeric <- test_BF %>% 
+    select(Gender, Age, Occupation, Marital_Status, City_Category, Stay_In_Current_City_Years, Purchase)
+test_BF_Numeric$Gender <- as.integer(test_BF_Numeric$Gender)
+test_BF_Numeric$Age <- as.integer(test_BF_Numeric$Age)
+test_BF_Numeric$City_Category <- as.integer(test_BF_Numeric$City_Category)
+test_BF_Numeric$Stay_In_Current_City_Years <- as.integer(test_BF_Numeric$Stay_In_Current_City_Years)
+
+#check the structure of test dataset  dataset 
+str(test_BF_Numeric)
+```
+
+```{r}
+# Compute a correlation matrix
+corr_BF <- cor(train_BF_NUMERIC)
+corr_BF
+```
+
+
+
+```{r}
+# Compute a matrix of correlation p-values
+p_corr_BF <- cor_pmat(train_BF_NUMERIC)
+p_corr_BF
+```
+
+
+```{r}
+# Visualize the correlation matrix of ful data 
+
+corrgram(train_BF_NUMERIC, upper.panel=panel.pie,main= "Corrgram of Black Friday  variables" )
+```
+
+
+```{r}
+# Visualize the correlation matrix
+ggcorrplot(corr_BF, method = "circle",hc.order = TRUE)
+```
+
+
+```{r}
+#Fit multiple linear regression
+model_BF <- lm(Purchase ~ Gender + Age + Occupation + Marital_Status + City_Category + Stay_In_Current_City_Years, data = train_BF_NUMERIC)
+
+```
+
+
+```{r}
+#create the equation from the above model
+
+equation_BF <- noquote(paste('Purchase =',
+                            round(model_BF$coefficients[1],0), '+',
+                            round(model_BF$coefficients[2],0), '* Gender', '+',
+                            round(model_BF$coefficients[3],0), '* Age', '+',
+                            round(model_BF$coefficients[4],0), '* Occupation', '+',
+                            round(model_BF$coefficients[5],0), '* Marital_Status', '+',
+                            round(model_BF$coefficients[6],0), '* City_Category', '+',
+                            round(model_BF$coefficients[7],0), '* Stay_In_Current_City_Years'))
+#Display the equation 
+equation_BF
+
+```
+
+
+```{r}
+#check the summary statistics 
+summary(model_BF)
+```
+
+
+```{r}
+#Analysis of variance 
+anova(model_BF)
+```
+
+
+```{r}
+#presence of multicollinearity between variables.
+vif(model_BF)
+```
+
+
+```{r}
+#tolerance and vif 
+ols_vif_tol(model_BF)
+```
+
+
+```{r}
+#Stepwise regression 
+# Full model should contains all the variables 
+fullmodel=model_BF
+
+# null model contains no variable
+nullmodel=lm(Purchase ~1, data=train_BF_NUMERIC)
+
+#stepwise regression using AIC values
+step(nullmodel, scope = list(upper=fullmodel), data=train_BF_NUMERIC, direction="both")
+
+```
+
+
+```{r}
+library(leaps)
+subregmodel<-leaps::regsubsets(Purchase ~ City_Category + Gender + Occupation + 
+    Age + Marital_Status + Stay_In_Current_City_Years, data = train_BF_NUMERIC)
+summary (subregmodel)
+```
+
+
+```{r}
+plot(subregmodel, scale="r2")
+plot(subregmodel, scale="adjr2")
+```
+
+
+```{r}
+res.sum <- summary(subregmodel)
+data.frame(
+  Adj.R2 = which.max(res.sum$adjr2),
+  rsq = which.max(res.sum$rsq),
+  CP = which.min(res.sum$cp),
+  BIC = which.min(res.sum$bic)
+)
+
+```
+Residual Assumptions
+
+Linear regression makes several assumptions about the data, such as :
+1.	Linearity of the data. The relationship between the predictor (x) and the outcome (y) is assumed to be linear.
+2.	Normality of residuals. The residual errors are assumed to be normally distributed.
+3.	Homogeneity of residuals variance. The residuals are assumed to have a constant variance (homoscedasticity)
+4.	Independence of residuals error terms.
+
+
+```{r}
+#fit the model in the sample and check the residul plot for better understanding 
+
+model_BF_res <- lm(Purchase ~ Gender + Age + Occupation + Marital_Status + City_Category + Stay_In_Current_City_Years, data = #train_BF_NUMERIC[1:50,])
+train_BF_NUMERIC[0:4000,])
+#train_BF_NUMERIC[150:200,])
+#plot the residuals
+plot(model_BF_res)
+
+```
+
+#Homogeneity of residuals variance
+```{r}
+#statistical test
+# Evaluate homoscedasticity
+# non-constant error variance test
+
+ncvTest(model_BF)
+bptest(model_BF)
+```
+
+H0: Errors have a constant variance 
+H1: Errors have a non-constant variance
+
+```{r}
+#Independence of residuals error terms
+acf(model_BF_res$residuals)
+```
+```{r}
+LBQPlot(model_BF_res$residuals, lag.max = length(model_BF_res$residuals)-1 , StartLag = 0 + 1, k = 0, SquaredQ = FALSE)
+```
+
+
+```{r}
+durbinWatsonTest(model_BF_res)
+```
+
+```{r}
+#Normality of residuals
+# Test for Normally Distributed Errors
+shapiro.test(model_BF_res$residuals)
+
+```
+
+prediction
+
+
+```{r}
+
+predTest <- predict(model_BF, newdata =test_BF_Numeric)
+sseTest <- sum((predTest - test_BF_Numeric$Purchase) ^ 2)
+sstTest <- sum((mean(test_BF$Purchase) - test_BF_Numeric$Purchase) ^ 2)
+print ("Model R2 (Test Data)")
+modelR2Test <- 1 - sseTest/sstTest
+modelR2Test
+print ("Model RMSE (Test Data)")
+rmseTest <- sqrt(mean((predTest - test_BF_Numeric$Purchase) ^ 2))
+rmseTest
+
+ 
+```
+
+# method 2 
+
+Include all the colums 
+
+
+```{r}
+library(corrgram)
+corrgram(BFData, upper.panel=panel.pie,main= "Corrgram of Black Friday  variables" )
+```
+
+```{r}
+#change city to years 
+train_BF$Stay_In_Current_City_Years <- as.integer(train_BF$Stay_In_Current_City_Years)
+#marital status to factor 
+train_BF$Marital_Status <- factor(train_BF$Marital_Status)
+
+
+#change city to years 
+test_BF$Stay_In_Current_City_Years <- as.integer(test_BF$Stay_In_Current_City_Years)
+#marital status to factor 
+test_BF$Marital_Status <- factor(test_BF$Marital_Status)
+```
+
+
+```{r}
+t(colSums(is.na(train_BF[,c(9,11)])))
+
+str(train_BF)
+```
+
+
+
+```{r}
+
+ModelBFFit= lm(Purchase ~Occupation+City_Category+Stay_In_Current_City_Years+Product_Category_1+Marital_Status+Product_Category_2+Product_Category_3, data = train_BF)
+
+```
+
+```{r}
+#create the equation from the above model
+
+equation_BF <- noquote(paste('Purchase =',
+                            round(ModelBFFit$coefficients[1],0), '+',
+                            round(ModelBFFit$coefficients[2],0), '* Occupation', '+',
+                            round(ModelBFFit$coefficients[3],0), '* City_CategoryB  ', '+',
+                            round(ModelBFFit$coefficients[4],0), '* City_CategoryC  ', '+',
+                            round(ModelBFFit$coefficients[5],0), '* Stay_In_Current_City_Years ', '+',
+                            round(ModelBFFit$coefficients[6],0), '* Product_Category_1', '+',
+                            round(ModelBFFit$coefficients[7],0), '* Marital_Status1 ','+',
+                            round(ModelBFFit$coefficients[8],0), '* Product_Category_2', '+',
+                            round(ModelBFFit$coefficients[9],0), '* Product_Category_3'))
+#Display the equation 
+equation_BF
+
+```
+
+```{r}
+#check the summary statistics 
+summary(ModelBFFit)
+```
+
+```{r}
+#Analysis of variance 
+anova(ModelBFFit)
+```
+
+```{r}
+#presence of multicollinearity between variables.
+vif(ModelBFFit)
+```
+
+```{r}
+#tolerance and vif 
+ols_vif_tol(ModelBFFit)
+```
+
+
+```{r}
+#Stepwise regression 
+# Full model should contains all the variables 
+fullmodel=ModelBFFit
+
+# null model contains no variable
+nullmodel=lm(Purchase ~1, data=train_BF)
+
+#stepwise regression using AIC values
+step(nullmodel, scope = list(upper=fullmodel), data=train_BF, direction="both")
+
+
+```
+
+```{r}
+library(leaps)
+subregmodel<-leaps::regsubsets(Purchase ~ Occupation + Marital_Status + 
+    City_Category + Stay_In_Current_City_Years + Product_Category_1 + 
+    Product_Category_2 + Product_Category_3, data = train_BF)
+summary (subregmodel)
+```
+
+```{r}
+plot(subregmodel, scale="r2")
+plot(subregmodel, scale="adjr2")
+```
+
+
+```{r}
+res.sum <- summary(subregmodel)
+data.frame(
+  Adj.R2 = which.max(res.sum$adjr2),
+  rsq = which.max(res.sum$rsq),
+  CP = which.min(res.sum$cp),
+  BIC = which.min(res.sum$bic)
+)
+
+```
+
+
+
+```{r}
+#fit the model in the sample and check the residul plot for better understanding 
+#length(train_BF$User_ID)
+ModelBFFit <- lm(Purchase ~ Gender + Age + Occupation + Marital_Status + City_Category + Stay_In_Current_City_Years, data = train_BF[0:500,])
+#train_BF])
+#train_BF_Numeric2[150:200,])
+#plot the residuals
+plot(ModelBFFit)
+
+```
+#Homogeneity of residuals variance
+```{r}
+#statistical test
+# Evaluate homoscedasticity
+# non-constant error variance test
+
+ncvTest(ModelBFFit)
+bptest(ModelBFFit)
+```
+
+H0: Errors have a constant variance 
+H1: Errors have a non-constant variance
+
+```{r}
+#Independence of residuals error terms
+acf(ModelBFFit$residuals)
+```
+```{r}
+LBQPlot(ModelBFFit$residuals, lag.max = length(ModelBFFit$residuals)-1 , StartLag = 0 + 1, k = 0, SquaredQ = FALSE)
+```
+
+
+```{r}
+durbinWatsonTest(ModelBFFit)
+```
+
+```{r}
+#Normality of residuals
+# Test for Normally Distributed Errors
+shapiro.test(ModelBFFit$residuals)
+
+```
+
+
+```{r}
+
+predTest <- predict(ModelBFFit, newdata =test_BF)
+sseTest <- sum((predTest - test_BF$Purchase) ^ 2)
+sstTest <- sum((mean(test_BF$Purchase) - test_BF$Purchase) ^ 2)
+print ("Model R2 (Test Data)")
+modelR2Test <- 1 - sseTest/sstTest
+modelR2Test
+print ("Model RMSE (Test Data)")
+rmseTest <- sqrt(mean((predTest - test_BF_Numeric$Purchase) ^ 2))
+rmseTest
+
+```
+
